@@ -43,34 +43,45 @@ namespace cleanpath
 
         static void CleanPathFor(EnvironmentVariableTarget target)
         {
-            var delPathList = new List<string>();
-            var modPathList = new List<string>();
+            var delPathList = new List<string>(); // obsolete paths found to delete
+            var modPathList = new List<string>(); // shorter paths found to modify
+            var dupPathList = new List<string>(); // duplicate paths found to skip
+            var newPathList = new List<string>(); // the new path list (full)
+            var newPath = ""; // the new path string (short)
+
             var curPath = Environment.GetEnvironmentVariable("PATH", target);
-            var curPathArr = curPath.Split(";");
+            var curPathArr = curPath.Split(";", StringSplitOptions.RemoveEmptyEntries);
             log("");
             log($"Current # of {target} paths: {curPathArr.Length}, length: {curPath.Length}");
-            var newPath = "";
-            var newPathList = new List<string>();
             foreach (var p in curPathArr)
             {
-                if (p.Trim().Length == 0) continue;
                 var fullPath = Path.GetFullPath(p);
                 if (!Directory.Exists(fullPath))
                 {
                     delPathList.Add(fullPath);
                     continue;
                 }
-                if (newPathList.Any(x => x.Equals(fullPath))) continue;
-                newPathList.Add(fullPath);
+                if (newPathList.Any(x => x.Equals(fullPath)))
+                {
+                    dupPathList.Add(fullPath);
+                    continue;
+                }
                 var shortPath = GetShortPathName(fullPath);
                 if (!string.Equals(p, shortPath))
                 {
                     modPathList.Add($"{p} -> {shortPath}");
                 }
                 newPath += shortPath + ";";
+                newPathList.Add(fullPath);
             }
-            var newPathArr = newPath.Split(";");
+            var newPathArr = newPath.Split(";", StringSplitOptions.RemoveEmptyEntries );
             log($"New # of {target} paths: {newPathArr.Length}, length: {newPath.Length}");
+            if (dupPathList.Count > 0)
+            {
+                log("");
+                log("Following paths are redundant and will be DE-DUPLICATED");
+                log(string.Join(Environment.NewLine, dupPathList));
+            }
             if (delPathList.Count > 0)
             {
                 log("");
@@ -85,15 +96,15 @@ namespace cleanpath
             }
             if (newPathArr.Length == curPathArr.Length)
             {
-                log("New path is equal to current path; will not update.");
+                log("New path is equal to current path; will NOT update.");
             }
             else if (newPathArr.Length > curPathArr.Length)
             {
-                log("New path is longer (!) than current path; will not update.");
+                log("New path is longer (!) than current path; will NOT update.");
             }
             else if (newPathArr.Length < 10)
             {
-                log("New path is too short; will not update.");
+                log("New path is too short; will NOT update.");
             }
             else
             {
@@ -113,10 +124,10 @@ namespace cleanpath
                         log($"{target} path update failed. Try running it with administrator rights.");
                         Environment.Exit(-1);
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         log($"{target} path update failed");
-                        throw ex;
+                        throw;
                     }
                 }
                 else
@@ -128,7 +139,7 @@ namespace cleanpath
 
         static void Main(string[] args)
         {
-            log("CleanPath © muratgu 2021");
+            log("CleanPath © 2021");
             CleanPathFor(EnvironmentVariableTarget.User);
             CleanPathFor(EnvironmentVariableTarget.Machine);
         }
