@@ -28,7 +28,7 @@ jobs:
     - name: Publish
       if: startsWith(github.ref, 'refs/tags/')
       run: |
-        tag=${github.ref:10}
+        tag=${{ github.ref:10 }}
         target=win-x64
         release_name="App-$tag-$target
         dotnet publish -c Release -o "$release_name"
