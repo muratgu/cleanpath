@@ -34,9 +34,9 @@ jobs:
         SOURCE_TAG: ${{ steps.vars.outputs.SOURCE_TAG }}
       if: startsWith(github.ref, 'refs/tags/')      
       run: |
-        tag=$SOURCE_TAG
+        tag=SOURCE_TAG
         target=win-x64
-        release_name="App-$tag-$target
+        release_name="App-$tag-$target"
         dotnet publish -c Release -o "$release_name"
         7z a -tzip "${release_name}.zip" "./${release_name}/*"
         rm -r "$release_name"
