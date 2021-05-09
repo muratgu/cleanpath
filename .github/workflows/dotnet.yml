@@ -25,11 +25,14 @@ jobs:
       run: dotnet test --no-build --verbosity normal
     - name: GetVars
       id: vars
-      run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
+      run: |
+        echo ${GITHUB_REF}
+        echo ::set-output name=tag::${GITHUB_REF#refs/*/}
     - name: Publish
       env:
         RELEASE_TAG: ${{ steps.vars.outputs.tag }}
       run: |
+        echo $RELEASE_TAG
         tag=$RELEASE_TAG
         target=win-x64
         release_name="App-$tag-$target
