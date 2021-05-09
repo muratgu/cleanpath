@@ -25,7 +25,7 @@ jobs:
       run: dotnet test --no-build --verbosity normal
     - name: Publish
       run: |
-        tag=$(git describe --tags --abbrev=0)
+        tag=${{ github.event.release.tag_name }}
         target=win-x64
         release_name="App-$tag-$target
         dotnet publish -c Release -o "$release_name"
