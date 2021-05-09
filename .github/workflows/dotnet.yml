@@ -28,7 +28,7 @@ jobs:
     - name: Publish
       env:
         GITHUB_REF: ${{ github.ref }}
-      if: startsWith(GITHUB_REF, 'refs/tags/')      
+      if: startsWith(github.ref, 'refs/tags/')      
       run: |
         tag="${GITHUB_REF:10}"
         target=win-x64
