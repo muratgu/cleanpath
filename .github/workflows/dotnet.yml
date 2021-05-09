@@ -26,9 +26,11 @@ jobs:
     - name: Test
       run: dotnet test --no-build --verbosity normal
     - name: Publish
-      if: startsWith(github.ref, 'refs/tags/')
+      env:
+        GITHUB_REF: ${{ github.ref }}
+      if: startsWith(GITHUB_REF, 'refs/tags/')      
       run: |
-        tag=${{ github.ref:10 }}
+        tag="${GITHUB_REF:10}"
         target=win-x64
         release_name="App-$tag-$target
         dotnet publish -c Release -o "$release_name"
