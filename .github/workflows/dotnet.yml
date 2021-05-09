@@ -25,13 +25,17 @@ jobs:
       run: dotnet test --no-build --verbosity normal
     - name: Publish
       run: |
-        dotnet publish -c Release
-        7z a -tzip "cleanpath-win64.zip" "./release/*"
+        tag=$(git describe --tags --abbrev=0)
+        target=win-x64
+        release_name="App-$tag-$target
+        dotnet publish -c Release -o "$release_name"
+        7z a -tzip "${release_name}.zip" "./${release_name}/*"
+        rm -r "$release_name"
     - name: Release
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        files: cleanpath-win64.zip
+        files: "App*"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
