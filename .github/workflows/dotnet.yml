@@ -37,7 +37,7 @@ jobs:
         tag=$SOURCE_TAG
         target=win-x64
         release_name="App-$tag-$target"
-        dotnet publish -c Release -o "$release_name"
+        dotnet publish -r $target -c Release -o "$release_name"
         7z a -tzip "${release_name}.zip" "./${release_name}/*"
         rm -r "$release_name"
     - name: Release
