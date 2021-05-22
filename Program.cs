@@ -8,6 +8,7 @@ using System.Text;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security;
+using CommandLine;
 
 namespace cleanpath
 {
@@ -31,17 +32,17 @@ namespace cleanpath
 
         static string GetShortPathName(string longFileName)
         {
-            int sz = (int) GetShortPathName(longFileName, null, 0);
+            int sz = (int)GetShortPathName(longFileName, null, 0);
             if (sz == 0)
                 throw new Win32Exception();
             var sb = new StringBuilder(sz + 1);
-            sz = (int) GetShortPathName(longFileName, sb, (uint) sb.Capacity);
+            sz = (int)GetShortPathName(longFileName, sb, (uint)sb.Capacity);
             if (sz == 0)
                 throw new Win32Exception();
             return sb.ToString();
         }
 
-        static void CleanPathFor(EnvironmentVariableTarget target)
+        static void CleanPathFor(EnvironmentVariableTarget target, bool change = false, bool confirmed = false, bool list = false)
         {
             var delPathList = new List<string>(); // obsolete paths found to delete
             var modPathList = new List<string>(); // shorter paths found to modify
@@ -51,97 +52,123 @@ namespace cleanpath
 
             var curPath = Environment.GetEnvironmentVariable("PATH", target);
             var curPathArr = curPath.Split(";", StringSplitOptions.RemoveEmptyEntries);
-            log("");
-            log($"Current # of {target} paths: {curPathArr.Length}, length: {curPath.Length}");
+            log($"{curPathArr.Length} {target} paths ({curPath.Length} chars)");
             foreach (var p in curPathArr)
             {
+                if (list) log(p);
                 var fullPath = Path.GetFullPath(p);
                 if (!Directory.Exists(fullPath))
                 {
                     delPathList.Add(fullPath);
+                    log($"OBSOLETE {fullPath}");
                     continue;
                 }
                 if (newPathList.Any(x => x.Equals(fullPath)))
                 {
                     dupPathList.Add(fullPath);
+                    log($"DUPLICATE {fullPath}");
                     continue;
                 }
                 var shortPath = GetShortPathName(fullPath);
                 if (!string.Equals(p, shortPath))
                 {
                     modPathList.Add($"{p} -> {shortPath}");
+                    log($"LONG {fullPath}");
                 }
                 newPath += shortPath + ";";
-                newPathList.Add(fullPath);
+                newPathList.Add(fullPath);               
             }
-            var newPathArr = newPath.Split(";", StringSplitOptions.RemoveEmptyEntries );
-            log($"New # of {target} paths: {newPathArr.Length}, length: {newPath.Length}");
-            if (dupPathList.Count > 0)
+            var newPathArr = newPath.Split(";", StringSplitOptions.RemoveEmptyEntries);
+
+            var diffLength = curPath.Length - newPath.Length;
+
+            if (newPathArr.Length == curPathArr.Length && diffLength == 0)
             {
-                log("");
-                log("Following paths are redundant and will be DE-DUPLICATED");
-                log(string.Join(Environment.NewLine, dupPathList));
+                if (change) log("New path is equal to current path; will NOT update");
+                else log("The path is clean");
             }
-            if (delPathList.Count > 0)
+            else if (newPathArr.Length > curPathArr.Length || diffLength < 0)
             {
-                log("");
-                log("Following paths are obsolete and will be REMOVED");
-                log(string.Join(Environment.NewLine, delPathList));
-            }
-            if (modPathList.Count > 0)
-            {
-                log("");
-                log("Following paths will be SHORTENED");
-                log(string.Join(Environment.NewLine, modPathList));
-            }
-            if (newPathArr.Length == curPathArr.Length)
-            {
-                log("New path is equal to current path; will NOT update.");
-            }
-            else if (newPathArr.Length > curPathArr.Length)
-            {
-                log("New path is longer (!) than current path; will NOT update.");
+                if (change) log("New path is longer (!) than current path; will NOT update");
+                else log("The path may become longer if modified");
             }
             else if (newPathArr.Length < 10)
             {
-                log("New path is too short; will NOT update.");
+                if (change) log("New path is too short; will NOT update");
+                else log("The path may become too short if modified");
             }
             else
             {
-                log("");
-                log($"Please type Y and press ENTER to update {target} path");
-                var res = Console.Read();
-                if (res == (int)ConsoleKey.Y)                
+                log($"The {target} path can be shortened to {newPath.Length} chars ({diffLength} less)");
+                if (change)
                 {
-                    log($"Updating {target} path...");
-                    try
+                    if (!confirmed)
                     {
-                        Environment.SetEnvironmentVariable("PATH", newPath, target);
-                        log($"{target} path update successful");
-                    }
-                    catch (SecurityException)
+                        log($"Do you really want to update the {target} path? [Y]");
+                        var res = Console.Read();
+                        confirmed = (res == (int)ConsoleKey.Y); 
+                    }                    
+                    if (confirmed)
                     {
-                        log($"{target} path update failed. Try running it with administrator rights.");
-                        Environment.Exit(-1);
+                        try
+                        {
+                            Environment.SetEnvironmentVariable("PATH", newPath, target);
+                            log($"Successfully updated the {target} path");
+                        }
+                        catch (SecurityException)
+                        {
+                            log($"Failed to updated the {target} path. Try with administrator rights");
+                            Environment.Exit(-1);
+                        }
+                        catch (Exception)
+                        {
+                            log($"Failed to update the {target} path");
+                            throw;
+                        }
                     }
-                    catch (Exception)
+                    else
                     {
-                        log($"{target} path update failed");
-                        throw;
+                        log($"The {target} path is NOT updated");
                     }
-                }
-                else
-                {
-                    log($"Current {target} path preserved");
-                }
+                }                
             }
+        }
+
+        class Options
+        {
+            [Option('u', "user", Default = true, HelpText = "Target user path")]
+            public bool TargetUserPath { get; set; }
+
+            [Option('m', "machine", Default = false, HelpText = "Target machine path")]
+            public bool TargetMachinePath { get; set; }
+
+            [Option('c', "change", Default = false, HelpText = "Change path")]
+            public bool ChangePath { get; set; }
+
+            [Option('l', "list", Default = false, HelpText = "List path")]
+            public bool ListPath { get; set; }
+
+            [Option('y', "yes", Default = false, HelpText = "Respond yes to confirmation")]
+            public bool RespondYes { get; set; }
         }
 
         static void Main(string[] args)
         {
-            log("CleanPath © 2021");
-            CleanPathFor(EnvironmentVariableTarget.User);
-            CleanPathFor(EnvironmentVariableTarget.Machine);
+            Parser.Default.ParseArguments<Options>(args)
+                   .WithParsed<Options>(o =>
+                   {
+                       var target = o.TargetMachinePath ? EnvironmentVariableTarget.Machine : EnvironmentVariableTarget.User;
+
+                       if (o.ChangePath)
+                       {
+                           CleanPathFor(target, change: o.ChangePath, confirmed: o.RespondYes, list: o.ListPath);
+                       }
+                       else
+                       {
+                           CleanPathFor(target, list: o.ListPath);                       
+                       }
+                   });
         }
     }
 }
+    
