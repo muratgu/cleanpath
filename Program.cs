@@ -25,6 +25,9 @@ namespace cleanpath
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         static extern uint GetShortPathName(string lpszLongPath, char[] lpszShortPath, int cchBuffer);
 
+        [DllImport("kernel32.dll", SetLastError=true, CharSet=CharSet.Auto)]
+        static extern uint GetLongPathName(string lpszShortPath, [Out] StringBuilder lpszLongPath, uint cchBuffer);
+
         static void log(string s)
         {
             Console.WriteLine(s);
@@ -42,11 +45,23 @@ namespace cleanpath
             return sb.ToString();
         }
 
-        static void CleanPathFor(EnvironmentVariableTarget target, bool change = false, bool confirmed = false, bool list = false)
+        static string GetLongPathName(string shortPath)
         {
-            var delPathList = new List<string>(); // obsolete paths found to delete
-            var modPathList = new List<string>(); // shorter paths found to modify
-            var dupPathList = new List<string>(); // duplicate paths found to skip
+            StringBuilder builder = new StringBuilder(255);
+            int result = (int) GetLongPathName(shortPath, builder, (uint) builder.Capacity);
+            if (result > 0 && result < builder.Capacity) {
+                return builder.ToString(0, result);       
+            }     
+            if (result > 0) {
+                builder = new StringBuilder(result);
+                result = (int) GetLongPathName(shortPath, builder, (uint) builder.Capacity);
+                return builder.ToString(0, result);
+            }
+            throw new FileNotFoundException();
+        }
+
+        static void CleanPathFor(EnvironmentVariableTarget target, bool change = false, bool confirmed = false, bool list = false, bool listFullPath = false)
+        {
             var newPathList = new List<string>(); // the new path list (full)
             var newPath = ""; // the new path string (short)
 
@@ -55,24 +70,23 @@ namespace cleanpath
             log($"{curPathArr.Length} {target} paths ({curPath.Length} chars)");
             foreach (var p in curPathArr)
             {
-                if (list) log(p);
-                var fullPath = Path.GetFullPath(p);
+                var fullPath = GetLongPathName(p);
+                
+                if (list) log(listFullPath ? fullPath : p);
+
                 if (!Directory.Exists(fullPath))
                 {
-                    delPathList.Add(fullPath);
                     log($"OBSOLETE {fullPath}");
                     continue;
                 }
                 if (newPathList.Any(x => x.Equals(fullPath)))
                 {
-                    dupPathList.Add(fullPath);
                     log($"DUPLICATE {fullPath}");
                     continue;
                 }
                 var shortPath = GetShortPathName(fullPath);
                 if (!string.Equals(p, shortPath))
                 {
-                    modPathList.Add($"{p} -> {shortPath}");
                     log($"LONG {fullPath}");
                 }
                 newPath += shortPath + ";";
@@ -148,6 +162,9 @@ namespace cleanpath
             [Option('l', "list", Default = false, HelpText = "List path")]
             public bool ListPath { get; set; }
 
+            [Option('f', "full", Default = false, HelpText = "List full path")]
+            public bool ListFullPath { get; set; }
+
             [Option('y', "yes", Default = false, HelpText = "Respond yes to confirmation")]
             public bool RespondYes { get; set; }
         }
@@ -161,11 +178,11 @@ namespace cleanpath
 
                        if (o.ChangePath)
                        {
-                           CleanPathFor(target, change: o.ChangePath, confirmed: o.RespondYes, list: o.ListPath);
+                           CleanPathFor(target, change: o.ChangePath, confirmed: o.RespondYes, list: o.ListPath, listFullPath: o.ListFullPath);
                        }
                        else
                        {
-                           CleanPathFor(target, list: o.ListPath);                       
+                           CleanPathFor(target, list: o.ListPath, listFullPath: o.ListFullPath);
                        }
                    });
         }
