@@ -9,7 +9,7 @@ Requires administrator rights to be able to modify the registry entries related 
 
 Usage:
 
-	cleanpath 
+	cleanpath [options]
 		-m, --machine : Reports duplicate/obsolete/long paths in the machine path. Default is user path.
 		-l, --list    : Lists current path strings
 		-f, --full    : Lists full path strings
