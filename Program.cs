@@ -57,7 +57,7 @@ namespace cleanpath
                 result = (int) GetLongPathName(shortPath, builder, (uint) builder.Capacity);
                 return builder.ToString(0, result);
             }
-            throw new FileNotFoundException();
+            return shortPath; // not found
         }
 
         static void CleanPathFor(EnvironmentVariableTarget target, bool change = false, bool confirmed = false, bool list = false, bool listFullPath = false)
@@ -149,10 +149,7 @@ namespace cleanpath
         }
 
         class Options
-        {
-            [Option('u', "user", Default = true, HelpText = "Target user path")]
-            public bool TargetUserPath { get; set; }
-
+        {            
             [Option('m', "machine", Default = false, HelpText = "Target machine path")]
             public bool TargetMachinePath { get; set; }
 
