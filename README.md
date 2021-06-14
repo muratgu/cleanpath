@@ -9,10 +9,10 @@ Requires administrator rights to be able to modify the registry entries related 
 
 Usage:
 
-	cleanpath -u(default) or -m [<options>]
-		-u, --user    : Reports duplicate/obsolete/long paths in the user path
-		-m, --machine : Reports duplicate/obsolete/long paths in the machine path
-		-l, --list    : Lists current path
+	cleanpath 
+		-m, --machine : Reports duplicate/obsolete/long paths in the machine path. Default is user path.
+		-l, --list    : Lists current path strings
+		-f, --full    : Lists full path strings
 		-c, --change  : Prompt for confirmation and change path if needed
 		-y, --yes     : Respond Y to confirmation prompt
 
