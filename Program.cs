@@ -33,6 +33,15 @@ namespace cleanpath
             Console.WriteLine(s);
         }
 
+        static string RemoveLastSlash(string s)
+        {
+            if (String.IsNullOrEmpty(s)) 
+                return s;
+            if (s.EndsWith("/") || s.EndsWith("\\"))
+                return s.Substring(0, s.Length - 1);
+            return s;
+        }
+
         static string GetShortPathName(string longFileName)
         {
             int sz = (int)GetShortPathName(longFileName, null, 0);
@@ -42,7 +51,7 @@ namespace cleanpath
             sz = (int)GetShortPathName(longFileName, sb, (uint)sb.Capacity);
             if (sz == 0)
                 throw new Win32Exception();
-            return sb.ToString();
+            return RemoveLastSlash(sb.ToString());
         }
 
         static string GetLongPathName(string shortPath)
@@ -50,14 +59,14 @@ namespace cleanpath
             StringBuilder builder = new StringBuilder(255);
             int result = (int) GetLongPathName(shortPath, builder, (uint) builder.Capacity);
             if (result > 0 && result < builder.Capacity) {
-                return builder.ToString(0, result);       
+                return RemoveLastSlash(builder.ToString(0, result));
             }     
             if (result > 0) {
                 builder = new StringBuilder(result);
                 result = (int) GetLongPathName(shortPath, builder, (uint) builder.Capacity);
-                return builder.ToString(0, result);
+                return RemoveLastSlash(builder.ToString(0, result));
             }
-            return shortPath; // not found
+            return RemoveLastSlash(shortPath); // not found
         }
 
         static void CleanPathFor(EnvironmentVariableTarget target, bool change = false, bool confirmed = false, bool list = false, bool listFullPath = false)
